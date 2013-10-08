@@ -11,5 +11,13 @@ Implementation Notes
 Project Log
 ===========
 
+* The skeleton fails to build by default, due to strict warnings and unused
+  parameters.  Readding void declarations in front of the unused the variables
+  in order to avoid changing the build process, as I want the strict checks!
+  Added voids to read-command.c and execute-command.c, and everything builds
+  as expected.
+  1008131520
+
 * After a nasty incident involving a wayward 'git rm -rf', I'm back up and
   running.  Getting the git repo up first this time... doh!
+  1008131514
