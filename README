@@ -28,7 +28,11 @@ Raw Project Log & Notes
   concerned about the third function, which will have to translate my shiny new
   dynamic array of tokens into some kind of command stream strucutre using the 
   skeleton's predescribed command structure. It's a nice structure and all, but
-  it feels like building my house around somebody's kitchen, ya dig?
+  it feels like building my house around somebody's kitchen; confusing.  Anyway,
+  this thrid function will have to use two stacks, and will be much like the 
+  excellent example given in section, so I know where to begin there.  Work
+  continues.
+  1009130023 
 
 * Work continues on developing a working context free grammar to describe our
   shell langauge.  The two entry points referenced in main.c and described in 

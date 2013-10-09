@@ -74,7 +74,7 @@ make_command_stream (int (*get_next_byte) (void *),
     } 
   }
   buffer[bytesRead] = 0;
-  // Proof this code works: 
+  // PROOF: 
   // printf ("%s \n", buffer);
 
   error (1, 0, "command reading not FULLY implemented");
