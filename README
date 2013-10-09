@@ -11,6 +11,24 @@ Implementation Notes
 Project Log
 ===========
 
+* Work continues on developing a working context free grammar to describe our
+  shell langauge.  The two entry points referenced in main.c and described in 
+  read-command.h suggests a lexer/parser arrangement, but at the same time the
+  way the project skeleton outputs the tree suggests that make_command_stream
+  should already have knowledge of the proper indentation levels before
+  read_command_stream is ever callled; i.e. it must have knowledge of the 
+  overall command structure in order to do so and therefore need to have
+  completely processed the input by that point.
+
+  Resultingly, my strategy for the time being will be to read in the input
+  script in its' entirity ito a buffer when make_command_stream is called.  I
+  will then build a function to turn this buffered stream of characters into a 
+  series of terminal tokens.  A second function will take this series of tokens
+  and attempt to process them via the described grammer into the partially
+  descibed command structure, and simply store this finished structure to feed
+  to read command.
+  1008132042
+
 * The skeleton fails to build by default, due to strict warnings and unused
   parameters.  Readding void declarations in front of the unused the variables
   in order to avoid changing the build process, as I want the strict checks!
@@ -21,3 +39,57 @@ Project Log
 * After a nasty incident involving a wayward 'git rm -rf', I'm back up and
   running.  Getting the git repo up first this time... doh!
   1008131514
+
+Notes on Grammer
+================
+
+* Words      | 1 or more of the following characters:
+             | a-z A-z 0-9 ! % + , - . / : @ ^ _
+
+* Special    | |  | Pipe
+  Tokens     | && | And
+             | || | Or
+             | () | Subshells
+             | <> | Redirects
+
+Descriptions for for the shell syntax:
+--------------------------------------
+
+* Simple Command - Sequences of one or more words.  The first is the word to be
+                   executed.
+
+* Subshells      - Complete commands surrounded by ( ).
+
+* Redirections   - Simple commands with I/O redirections.  An I/O redirect is
+                   possibly empty, or one of the following:
+                       * < WORD
+                       * > WORD
+                       * < WORD > WORD
+
+* Piplines       - One or more commands seperated by |.
+
+* And/Or's       - One or more piplines seperated by && or ||.  The && and ||
+                   operators are defined to have the same precedence.
+
+* Complete       - Which are one or more and-ors each seperated by a semicolon
+  Commands         or newline, and which are optionally followed by a semicolon.
+                   An entire shell script is a complete command.
+
+* Comments       - Each consisting of a # that is not immediately preceded by an
+                   ordinary token, followed by characteres up to (but not
+                   including) the next NEWLINE.
+
+* Whitespace     - Consisting of SPACE, TAB, and NEWLINE.  NEWLINE is special:
+                   as described above, it can substitute for SEMICOLON.  Also,
+                   although WHITEPSACE can ordinarily appear before and after 
+                   any token, the only tokens that newlines can appear before
+                   are ( ), and the first words fo simple commands.  NEWLINES
+                   may follow any special token other than < and >.
+
+Errors
+------
+
+If the script given does not fall within the above language, the implmentation
+should output the line number and a colon, followed by some reasonable message.
+
+
