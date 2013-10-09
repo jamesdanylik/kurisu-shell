@@ -19,6 +19,20 @@ Usage & Examples
 Raw Project Log & Notes
 =======================
 
+* Breakthrough!  While struggling more than anticipated writing that second
+  tokenizing function, I had an epiphany while writing a function to bypass 
+  comments.  I realized I could successfully bypass the comment in another
+  function by simply remembering to return the first byte that wasn't part of
+  that comment.  Then I thought; wait, I can do that for basically everything!
+  My dynamic buffers will still be useful to hold words, but I don't think
+  they'll be any real reason to hold the entire script as a string in a buffer
+  somewhere.  This is so much more elegant, I can't resist, even though it will
+  involve reworking what I have so far substantionally.  Maybe, and just maybe,
+  I can dream of combinging tokens into commands in some way?  Combine the
+  second and third functions of my program?  Further work will have to wait
+  until tomorrow.
+  1009130348
+
 * The first function is complete, and successfully reads the entire script into
   a dynamic buffer in a few neat lines.  I've also developed a type structure 
   for tokens, and believe I will have to implement some form of dynamice array 

@@ -1,16 +1,16 @@
 // UCLA CS 111 Lab 1 command reading
 
-/* Skeleton Includes */
+/* Skeleton Includes -------------------------------------------------------- */
 #include "command.h"
 #include "command-internals.h"
 
 #include <error.h>
 
-/*My Includes */
+/*My Includes --------------------------------------------------------------- */
 #include "alloc.h"
 #include <stdio.h>
 
-/* Type Declarations */
+/* Type Declarations -------------------------------------------------------- */
 
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
@@ -44,7 +44,29 @@ typedef struct
   char *wordData;
 } token_t;
 
-/* Main Hook Functions */
+/* Helper Functions Prototypes ---------------------------------------------- */
+
+bool is_word_char ( char c); 
+
+bool 
+is_word_char ( char c )
+{
+  if ( isalnum(c) )
+  {
+    return true;
+  }
+  else if (      c == '!' || c == '%' || c == '+' || c == ',' || c == '-' 
+  || c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' )
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+/* Main Hook Functions ------------------------------------------------------ */
 
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
@@ -54,28 +76,39 @@ make_command_stream (int (*get_next_byte) (void *),
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  */
 
-  /* Begin by reading the shell script into a buffer for processing */
+  size_t line_count = 0;
 
-  /* Some variables to hold the buffer and track its size */
-  size_t bufferSize = 256; 
-  size_t bytesRead = 0;    
-  int currentByte;  
-  char *buffer = (char*) checked_malloc(bufferSize);
+  size_t buffer_size = 16; 
+  size_t bytes_read = 0;    
+  char *buffer = (char*) checked_malloc(buffer_size);
+  char current_byte;
 
-  /* Read the entire script into the buffer.  Double in size if the script
-     exceeds what we currently have allocated.  Terminate the buffer with a
-     null byte.  */
-  while ( (currentByte = get_next_byte(get_next_byte_argument)) != EOF )
+  size_t token_arr_byte_size = 16 * sizeof(token_t);
+  size_t token_arr_size = 16;
+  size_t tokens_read = 0;
+  token_t *tokens = (token_t*) checked_malloc(token_arr_byte_size); 
+  
+
+  while ( (current_byte = get_next_byte(get_next_byte_argument)) != EOF )
   {
+    if ( is_word_char(current_byte) ) 
+    {
+      tokens[tokens_read].type = WORD_T;
+      buffer[bytes_read++] = current_byte;
+      current_byte = get_next_byte(get_next_byte_argument);
+      while ( is_word_char(current_byte) )
+      {
+
+      }
+    }
     buffer[bytesRead++] = currentByte;
     if ( bytesRead == bufferSize)
     {
       buffer = (char*) checked_grow_alloc(buffer, &bufferSize);
     } 
   }
-  buffer[bytesRead] = 0;
   // PROOF: 
-  // printf ("%s \n", buffer);
+  //printf ("%s \n", buffer);
 
   error (1, 0, "command reading not FULLY implemented");
   return 0;
