@@ -10,6 +10,8 @@
 #include "alloc.h"
 #include <stdio.h>
 
+/* Type Declarations */
+
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
 
@@ -21,6 +23,28 @@ struct command_stream
   int size;
   command_t *commands;
 };
+
+typedef enum 
+{
+  WORD_T,
+  PIPE_T,
+  AND_T,
+  OR_T,
+  OPEN_PAREN_T,
+  CLOSE_PAREN_T,
+  L_REDIR_T,
+  R_REDIR_T,
+  NEWLINE_T,
+  SEMICOLON_T
+} token_type_t;
+
+typedef struct
+{
+  token_type_t type;
+  char *wordData;
+} token_t;
+
+/* Main Hook Functions */
 
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),

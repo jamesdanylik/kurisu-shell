@@ -2,14 +2,33 @@ James Danylik
 UID 403548957
 CS 111, Fall '13
 
+
+Readme for Kurisu-Shell
+=======================
+An implmentation of the time-travel-shell for CS111.
+
 Introduction
-============
+------------
 
-Implementation Notes
-====================
+Implementation Details
+----------------------
 
-Project Log
-===========
+Usage & Examples
+----------------
+
+Raw Project Log & Notes
+=======================
+
+* The first function is complete, and successfully reads the entire script into
+  a dynamic buffer in a few neat lines.  I've also developed a type structure 
+  for tokens, and believe I will have to implement some form of dynamice array 
+  to hold them as well.  Grrr C... but it is kind of zen-like reinventing the
+  proverbial wheel.  The second function, reading our nice buffer into the fore-
+  described dynamic array of tokens should be fairly easy.  I'm only really
+  concerned about the third function, which will have to translate my shiny new
+  dynamic array of tokens into some kind of command stream strucutre using the 
+  skeleton's predescribed command structure. It's a nice structure and all, but
+  it feels like building my house around somebody's kitchen, ya dig?
 
 * Work continues on developing a working context free grammar to describe our
   shell langauge.  The two entry points referenced in main.c and described in 
@@ -40,8 +59,8 @@ Project Log
   running.  Getting the git repo up first this time... doh!
   1008131514
 
-Notes on Grammer
-================
+Notes on Tokens
+---------------
 
 * Words      | 1 or more of the following characters:
              | a-z A-z 0-9 ! % + , - . / : @ ^ _
@@ -52,8 +71,8 @@ Notes on Grammer
              | () | Subshells
              | <> | Redirects
 
-Descriptions for for the shell syntax:
---------------------------------------
+Descriptions for the shell syntax:
+----------------------------------
 
 * Simple Command - Sequences of one or more words.  The first is the word to be
                    executed.
