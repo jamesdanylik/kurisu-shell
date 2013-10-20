@@ -10,6 +10,7 @@
 #include "alloc.h"
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 
 /* Type Declarations -------------------------------------------------------- */
 
@@ -28,6 +29,9 @@ bool is_word_char ( char c);
 char get_byte_after_comment ( int (*get_next_byte) (void *), 
                               void *get_next_byte_argument );
   // Gets the next eligble byte after comment ('#') has been encountered.
+
+void give_last_byte( void *get_next_byte_argument );
+  // A helper function to move back the last byte for further processing.
 
 /* Helper Function Definitions --------------------------------------------- */
 
@@ -54,6 +58,12 @@ get_byte_after_comment ( int (*get_next_byte) (void *),
   { //Spin until the conditions are met, then return.
   } 
   return next_byte;
+}
+
+void
+give_last_byte( void *get_last_byte_argument)
+{
+  fseek(get_last_byte_argument, -1, SEEK_CUR);
 }
 
 /* Parsing Function Protoypes ----------------------------------------------- */
@@ -96,14 +106,85 @@ parse_complete_command ( int (*get_next_byte) (void *),
 
 /* Parsing Function Defintions ---------------------------------------------- */
 
+command_t
+parse_simple_command ( int (*get_next_byte) (void *),
+                       void *get_next_byte_argument )
+{
+  // Allocate a command and set its type to SIMPLE_COMMAND
+  command_t command = checked_malloc(sizeof(struct command));
+  command->type = SIMPLE_COMMAND; 
+
+  // Prepare a dynamic array of C strings (char arrays) to hold the words of
+  // the command.  Both the array of words and words themselves must be randomly
+  // resize, so their sizes must be traced with variables per command as well.
+  // First, the words array:
+  const size_t default_words_size = 4 * sizeof(char *);
+  size_t words_size = default_words_size;
+  size_t words_used = 0;
+  char **words = (char **) checked_malloc(words_size);
+  // Now allocate and initialize the first word, and variable for tokens in
+  // the current word:
+  const size_t default_word_size = 8 * sizeof(char);
+  size_t word_size = default_word_size;
+  char *word = (char *) checked_malloc(word_size);
+  word[0] = '\0';
+
+  // Start the main read loop
+  char next_byte;
+  while ( (next_byte = get_next_byte(get_next_byte_argument)) != EOF )
+  {
+    // If '#', then its a comment and we can use our helper to just move to
+    // the next byte, no harm no foul; first case of the loop.
+    if ( next_byte == '#' ) 
+      next_byte = get_byte_after_comment(get_next_byte, get_next_byte_argument);
+    // If ' ' or '/t' we can just restart the loop and check again.
+    else if ( next_byte == ' ' || next_byte == '\t' )
+      continue;
+    // If it's a word eligable character, this is a word  
+    else if ( is_word_char(next_byte) )
+    {
+      // Write the first byte in.
+      strncat(word, &next_byte, 1);
+  
+      // Read in the rest of the word
+      while ( (next_byte = get_next_byte(get_next_byte_argument)),
+              is_word_char(next_byte) )
+      {
+        // Resize the word if it gets too big
+        if ( strlen(word) == (word_size-1) )
+        {
+          word = checked_grow_alloc(word, &word_size);
+        }
+        strncat(word, &next_byte, 1);
+      }
+      // Put the last byte back for processing.
+      give_last_byte(get_next_byte_argument);
+
+      // resize the words array if this word will make too many
+      if ( (words_used*sizeof(char *)) >= (words_size-sizeof(char *)) )
+      {
+        words = checked_grow_alloc(words, &words_size);
+      }
+
+      // store the word in the array and allocate a new one
+      words[words_used++] = word;
+      word_size = default_word_size;
+      word = (char *) checked_malloc(word_size);
+      word[0] = '\0';
+      continue;
+    }
+  }
+  command->u.word = words;
+  return command;
+}
+
 /* Main Hook Functions ------------------------------------------------------ */
 
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
-  (void) get_next_byte;
-  (void) get_next_byte_argument;
+  parse_simple_command(get_next_byte, get_next_byte_argument);
   return 0;
 }
 
