@@ -1,4 +1,4 @@
-// UCLA CS 111 Lab 1 command reading
+// UCLA CS 111 Lab 1 A/B
 
 /* Skeleton Includes -------------------------------------------------------- */
 #include "command.h"
@@ -9,6 +9,7 @@
 /*My Includes --------------------------------------------------------------- */
 #include "alloc.h"
 #include <stdio.h>
+#include <ctype.h>
 
 /* Type Declarations -------------------------------------------------------- */
 
@@ -20,50 +21,54 @@
 
 struct command_stream
 {
-  int size;
   command_t *commands;
 };
-
-typedef enum 
-{
-  WORD_T,
-  PIPE_T,
-  AND_T,
-  OR_T,
-  OPEN_PAREN_T,
-  CLOSE_PAREN_T,
-  L_REDIR_T,
-  R_REDIR_T,
-  NEWLINE_T,
-  SEMICOLON_T
-} token_type_t;
-
-typedef struct
-{
-  token_type_t type;
-  char *wordData;
-} token_t;
 
 /* Helper Functions Prototypes ---------------------------------------------- */
 
 bool is_word_char ( char c); 
+char get_byte_after_whitespace ( int (*get_next_byte) (void *),
+                      void *get_next_byte_argument );
+char get_byte_after_comment ( int (*get_next_byte) (void *),
+                   void *get_next_byte_argument );
 
 bool 
 is_word_char ( char c )
 {
-  if ( isalnum(c) )
-  {
-    return true;
-  }
-  else if (      c == '!' || c == '%' || c == '+' || c == ',' || c == '-' 
+  // Words can be alphanumeric or contain the prescribed symbols
+  if ( isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' 
   || c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' )
-  {
     return true;
-  }
-  else
+
+  // Otherwise it's not a word character at all, is it?
+  else return false;
+}
+
+char
+get_byte_after_whitespace ( int (*get_next_byte) (void *),
+                            void *get_next_byte_argument )
+{
+  // Keep grabbing 
+  char current_byte;
+  while ( (current_byte = get_next_byte(get_next_byte_argument)),
+          current_byte == ' ' || current_byte == '\t' )
   {
-    return false;
   }
+  return current_byte;
+}
+
+char 
+get_byte_after_comment ( int (*get_next_byte) (void *),
+                              void *get_next_byte_argument )
+{
+  // Keep grabbing the next byte until we get a non whitespace character,
+  // then return the byte we got.
+  char current_byte;
+  while ( (current_byte = get_next_byte(get_next_byte_argument)),
+          current_byte != EOF && current_byte != '\n' ) 
+  { //Spin until the conditions are met, then return.
+  } 
+  return current_byte;
 }
 
 /* Main Hook Functions ------------------------------------------------------ */
@@ -75,42 +80,8 @@ make_command_stream (int (*get_next_byte) (void *),
   /* INPROGRESS: Replace this with your implementation.  You may need to
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  */
-
-  size_t line_count = 0;
-
-  size_t buffer_size = 16; 
-  size_t bytes_read = 0;    
-  char *buffer = (char*) checked_malloc(buffer_size);
-  char current_byte;
-
-  size_t token_arr_byte_size = 16 * sizeof(token_t);
-  size_t token_arr_size = 16;
-  size_t tokens_read = 0;
-  token_t *tokens = (token_t*) checked_malloc(token_arr_byte_size); 
-  
-
-  while ( (current_byte = get_next_byte(get_next_byte_argument)) != EOF )
-  {
-    if ( is_word_char(current_byte) ) 
-    {
-      tokens[tokens_read].type = WORD_T;
-      buffer[bytes_read++] = current_byte;
-      current_byte = get_next_byte(get_next_byte_argument);
-      while ( is_word_char(current_byte) )
-      {
-
-      }
-    }
-    buffer[bytesRead++] = currentByte;
-    if ( bytesRead == bufferSize)
-    {
-      buffer = (char*) checked_grow_alloc(buffer, &bufferSize);
-    } 
-  }
-  // PROOF: 
-  //printf ("%s \n", buffer);
-
-  error (1, 0, "command reading not FULLY implemented");
+  (void) get_next_byte;
+  (void) get_next_byte_argument;
   return 0;
 }
 
