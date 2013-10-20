@@ -10,14 +10,34 @@ An implmentation of the time-travel-shell for CS111.
 Introduction
 ------------
 
+%TODO%
+
 Implementation Details
 ----------------------
+
+%TODO%
 
 Usage & Examples
 ----------------
 
-Raw Project Log & Notes
-=======================
+%TODO%
+
+Project Log & Notebook
+======================
+
+* Okay, that was a very premature celebration.  After spending some time over
+  at Tau Beta Pi, I think I have a much better idea of how this needs to be
+  done.  The already implemented command structure is there to help me, not hurt
+  me; I just needed to understand how the skeleton code flowed a little better.
+  I have cleaned out most of the junk I've been struggling with in preperation
+  of a much cleaner implementation based on the recursive descent parsing style
+  I've been introduced to -- a long way from reading the entire script into a
+  buffer and regexing it!  What I'll need is functions for parsing each of the
+  major command types; the make command stucture should just call the one 
+  written for a complete command, since every command is a complete command.
+  Then as we encounter the various shell characters, we should just call another
+  of our command function handlers, otherwise call the simple command handler.
+  1019131858
 
 * Breakthrough!  While struggling more than anticipated writing that second
   tokenizing function, I had an epiphany while writing a function to bypass 
