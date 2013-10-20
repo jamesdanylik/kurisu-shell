@@ -25,6 +25,13 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* After more reading of the grammer, and most importantly, studying of the
+  command structure, I believe it will be best to construct functions to
+  produce each of the command types, except for andors, which may be safely
+  combined due to their equal precedence.  I have authored another commit,
+  and will try to get a simple command function working next.
+  1019132118
+
 * Okay, that was a very premature celebration.  After spending some time over
   at Tau Beta Pi, I think I have a much better idea of how this needs to be
   done.  The already implemented command structure is there to help me, not hurt

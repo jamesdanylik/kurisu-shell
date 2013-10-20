@@ -13,24 +13,23 @@
 
 /* Type Declarations -------------------------------------------------------- */
 
-/* FIXME: You may need to add #include directives, macro definitions,
-   static function definitions, etc.  */
-
-/* INPROGRESS: Define the type 'struct command_stream' here.  This should
-   complete the incomplete type declaration in command.h.  */
-
+// The command stream should just be a tree of commands, so all we need is a
+// pointer to the root of the tree
 struct command_stream
 {
-  command_t *commands;
+  command_t *root;
 };
 
 /* Helper Functions Prototypes ---------------------------------------------- */
 
 bool is_word_char ( char c); 
-char get_byte_after_whitespace ( int (*get_next_byte) (void *),
-                      void *get_next_byte_argument );
-char get_byte_after_comment ( int (*get_next_byte) (void *),
-                   void *get_next_byte_argument );
+  // Tests whether or not the next byte is an eligble word character.
+
+char get_byte_after_comment ( int (*get_next_byte) (void *), 
+                              void *get_next_byte_argument );
+  // Gets the next eligble byte after comment ('#') has been encountered.
+
+/* Helper Function Definitions --------------------------------------------- */
 
 bool 
 is_word_char ( char c )
@@ -39,37 +38,63 @@ is_word_char ( char c )
   if ( isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' 
   || c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' )
     return true;
-
   // Otherwise it's not a word character at all, is it?
   else return false;
 }
 
-char
-get_byte_after_whitespace ( int (*get_next_byte) (void *),
-                            void *get_next_byte_argument )
-{
-  // Keep grabbing 
-  char current_byte;
-  while ( (current_byte = get_next_byte(get_next_byte_argument)),
-          current_byte == ' ' || current_byte == '\t' )
-  {
-  }
-  return current_byte;
-}
-
 char 
-get_byte_after_comment ( int (*get_next_byte) (void *),
-                              void *get_next_byte_argument )
+get_byte_after_comment ( int (*get_next_byte) (void *), 
+                         void *get_next_byte_argument )
 {
-  // Keep grabbing the next byte until we get a non whitespace character,
-  // then return the byte we got.
-  char current_byte;
-  while ( (current_byte = get_next_byte(get_next_byte_argument)),
-          current_byte != EOF && current_byte != '\n' ) 
+  // Keep grabbing the next byte until we get to the next line, or the file
+  // ends.
+  char next_byte;
+  while ( (next_byte = get_next_byte(get_next_byte_argument)),
+          next_byte != EOF && next_byte != '\n' ) 
   { //Spin until the conditions are met, then return.
   } 
-  return current_byte;
+  return next_byte;
 }
+
+/* Parsing Function Protoypes ----------------------------------------------- */
+
+command_t
+parse_simple_command ( int (*get_next_byte) (void *), 
+                       void *get_next_byte_argument );
+  // Function to parse simple commands, defined as sequences of one or more 
+  // words.  Specifically, creates commands that are of type SIMPLE_COMMAND
+
+command_t 
+parse_subshell_command ( int (*get_next_byte) (void *),
+                         void *get_next_byte_argument );
+  // Function to parse subshell commands, defined as complete commands in the
+  // spec.  Specifically, creates commands that are of type SUBSHELL_COMMAND
+
+command_t
+parse_pipe_command ( int (*get_next_byte) (void *),
+                         void *get_next_byte_argument );
+  // Function to parse pipeline commands, defined as one or more commands
+  // seperated by '|'.  Specifically, creates commands that are of type 
+  // PIPE_COMMAND
+
+command_t
+parse_andor_command ( int (*get_next_byte) (void *),
+                      void *get_next_byte_argument );
+  // Function to parse andor commands, defined as one or more pipelines
+  // seperated by '&&' or '||'.  This function will produce output of two
+  // types, AND_COMMAND and OR_COMMAND; this is okay since they are equal
+  // precedence as defined in the spec.
+
+command_t
+parse_complete_command ( int (*get_next_byte) (void *),
+                         void * get_next_byte_argument );
+ // Function to parse complete commands, and hence our entry point function.
+ // which are defined as one or more AND/OR commands seperated by a SEMICOLON
+ // or a NEWLINE, and optionally followed by a SEMICOLON.  This returns
+ // commands of type SEQUENCE_COMMAND.
+
+
+/* Parsing Function Defintions ---------------------------------------------- */
 
 /* Main Hook Functions ------------------------------------------------------ */
 
@@ -77,9 +102,6 @@ command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
-  /* INPROGRESS: Replace this with your implementation.  You may need to
-     add auxiliary functions and otherwise modify the source code.
-     You can also use external functions defined in the GNU C Library.  */
   (void) get_next_byte;
   (void) get_next_byte_argument;
   return 0;
