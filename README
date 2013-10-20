@@ -25,6 +25,14 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Got a simple version of simple_command working! Super late but this is very
+  encouraging, my catching up is gaining speed!  Need to finish this funciton,
+  but the others should be similar (I hope).  Also introduced a new function to
+  move the file stream (get_next_byte_argument) back a byte so I can effectively
+  look ahead one.  Solved a little problem I was having and I figure it will
+  come in handy.
+  1020130440
+
 * After more reading of the grammer, and most importantly, studying of the
   command structure, I believe it will be best to construct functions to
   produce each of the command types, except for andors, which may be safely
