@@ -12,14 +12,18 @@
 #include <ctype.h>
 #include <string.h>
 
-/* Type Declarations -------------------------------------------------------- */
+/* Type Declarations & Global Variables ------------------------------------- */
 
-// The command stream should just be a tree of commands, so all we need is a
-// pointer to the root of the tree
 struct command_stream
 {
+  // The command stream should just be a tree of commands, so all we need is a
+  // pointer to the root of the tree
   command_t *root;
 };
+
+int line_number = 1;
+// A global variable to track the line we're currently on.  A utilitarian
+// concession; unly but efficient. We start on one cause most text editors do.
 
 /* Helper Functions Prototypes ---------------------------------------------- */
 
@@ -129,6 +133,10 @@ parse_simple_command ( int (*get_next_byte) (void *),
   char *word = (char *) checked_malloc(word_size);
   word[0] = '\0';
 
+  // Some flags to remember having seen tokens
+  bool input_redir = false;
+  bool output_redir = false;
+
   // Start the main read loop
   char next_byte;
   while ( (next_byte = get_next_byte(get_next_byte_argument)) != EOF )
@@ -140,7 +148,25 @@ parse_simple_command ( int (*get_next_byte) (void *),
     // If ' ' or '/t' we can just restart the loop and check again.
     else if ( next_byte == ' ' || next_byte == '\t' )
       continue;
-    // If it's a word eligable character, this is a word  
+    // If '>', set output_redir to true; if it's already set its an error
+    else if ( next_byte == '>' )
+    {
+      if ( output_redir )
+        error(1,0,"%d: Output redirection error. Double redirect?", line_number);
+      else
+        output_redir = true;
+      continue;
+    }
+    else if ( next_byte == '<' )
+    {
+      if ( input_redir )
+        error(1,0,"%d: Input redirection error. Double redirect?", line_number);
+      else
+        input_redir = true;
+      continue;
+    }
+    // If it's a word eligable character, this is a word, so start the
+    // heavy lifting:  
     else if ( is_word_char(next_byte) )
     {
       // Write the first byte in.
@@ -152,29 +178,69 @@ parse_simple_command ( int (*get_next_byte) (void *),
       {
         // Resize the word if it gets too big
         if ( strlen(word) == (word_size-1) )
-        {
           word = checked_grow_alloc(word, &word_size);
-        }
         strncat(word, &next_byte, 1);
       }
-      // Put the last byte back for processing.
+      // Put the last byte back for processing, it might not be a space!
       give_last_byte(get_next_byte_argument);
 
       // resize the words array if this word will make too many
       if ( (words_used*sizeof(char *)) >= (words_size-sizeof(char *)) )
-      {
         words = checked_grow_alloc(words, &words_size);
-      }
 
       // store the word in the array and allocate a new one
       words[words_used++] = word;
       word_size = default_word_size;
       word = (char *) checked_malloc(word_size);
       word[0] = '\0';
+      
+      // If output_redir is true, link this word to output and reset the flag.
+      if ( output_redir )
+      {
+        // If command->output is NULL, this is the first redirect, so
+        // set the word we just read to it, else its an error
+        if ( command->output == NULL )
+        {
+          command->output = words[words_used-1];
+          output_redir = false;
+        }
+        else
+          error(1,0,"%d: Output was already redirected for this command!", line_number);
+      }
+      // Else if input_redir is true, link to that and reset the flag.
+      else if ( input_redir )
+      {
+        // If command->input is NULL, this is the first redirect, so
+        // set the word we just read to it, else its an error
+        if ( command->input == NULL )
+        {
+          command->input = words[words_used-1];
+          input_redir = false;
+        }
+        else
+          error(1,0,"%d: Input was already redirected for this command!", line_number);
+      }
+      // End of word processing, so restart the loop.
       continue;
     }
+    // If is any of the remaing possible POSIX characters, the simple command
+    // is over, so put that back and return to a higher function.
+    else if ( next_byte == ';' || next_byte == '|' || next_byte == '&'
+           || next_byte == '\n' )
+    {
+      // If either flag is still set, the command ended improperly
+      if ( output_redir || input_redir )
+        error(1,0,"%d: Incomplete redirect in simple commmand!", line_number);
+      give_last_byte(get_next_byte_argument);
+      break;
+    }
   }
-  command->u.word = words;
+  // If the command has a first word, everything should be good.  Else, we
+  // either saw a blank command or... 
+  if (words[0] != NULL )
+    command->u.word = words;
+  else
+    error(1,0,"%d: Blank command encountered?", line_number);
   return command;
 }
 

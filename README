@@ -25,6 +25,14 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Improved simple command to handle redirects, believe its now fully working.
+  Tough to tell without a way to check output outside of printfs... getting
+  a working version of read_command_stream is a high priority to verify my
+  work.  Aslo created another directoy for test scripts, since having them
+  all over the working directory was getting annoying, especially with the
+  official test scripts kinda clogging up their tab compeltion.
+  1020131909
+
 * Got a simple version of simple_command working! Super late but this is very
   encouraging, my catching up is gaining speed!  Need to finish this funciton,
   but the others should be similar (I hope).  Also introduced a new function to
