@@ -80,9 +80,12 @@ parse_simple_command ( int (*get_next_byte) (void *),
 
 command_t 
 parse_subshell_command ( int (*get_next_byte) (void *),
-                         void *get_next_byte_argument );
+                         void *get_next_byte_argument,
+                         bool subshell_open );
   // Function to parse subshell commands, defined as complete commands in the
-  // spec.  Specifically, creates commands that are of type SUBSHELL_COMMAND
+  // spec.  Specifically, creates commands that are of type SUBSHELL_COMMAND.
+  // Added a function parameter to remember whether or not this is the first
+  // subshell called easily.
 
 command_t
 parse_pipe_command ( int (*get_next_byte) (void *),
@@ -144,14 +147,20 @@ parse_simple_command ( int (*get_next_byte) (void *),
     // If '#', then its a comment and we can use our helper to just move to
     // the next byte, no harm no foul; first case of the loop.
     if ( next_byte == '#' ) 
+    {
+      // next_byte is now the next newline, which we'll throw away to continue
+      // the loop.  But remember to incremet line_number!
       next_byte = get_byte_after_comment(get_next_byte, get_next_byte_argument);
+      line_number++;
+      continue;
+    }
     // If ' ' or '/t' we can just restart the loop and check again.
     else if ( next_byte == ' ' || next_byte == '\t' )
       continue;
     // If '>', set output_redir to true; if it's already set its an error
     else if ( next_byte == '>' )
     {
-      if ( output_redir )
+      if ( input_redir || output_redir )
         error(1,0,"%d: Output redirection error. Double redirect?", line_number);
       else
         output_redir = true;
@@ -159,7 +168,7 @@ parse_simple_command ( int (*get_next_byte) (void *),
     }
     else if ( next_byte == '<' )
     {
-      if ( input_redir )
+      if ( input_redir || output_redir )
         error(1,0,"%d: Input redirection error. Double redirect?", line_number);
       else
         input_redir = true;
@@ -192,9 +201,6 @@ parse_simple_command ( int (*get_next_byte) (void *),
         if ( command->output == NULL )
         {
           command->output = word;
-          word_size = default_word_size;
-          word = (char *) checked_malloc(word_size);
-          word[0] = '\0';
           output_redir = false;
         }
         else
@@ -208,9 +214,6 @@ parse_simple_command ( int (*get_next_byte) (void *),
         if ( command->input == NULL )
         {
           command->input = word;
-          word_size = default_word_size;
-          word = (char *) checked_malloc(word_size);
-          word[0] = '\0';
           input_redir = false;
         }
         else
@@ -223,19 +226,19 @@ parse_simple_command ( int (*get_next_byte) (void *),
         if ( (words_used*sizeof(char *)) >= (words_size-sizeof(char *)) )
           words = checked_grow_alloc(words, &words_size);
 
-        // store the word in the array and allocate a new one
+        // store the word in the array
         words[words_used++] = word;
-        word_size = default_word_size;
-        word = (char *) checked_malloc(word_size);
-        word[0] = '\0';
       }
-      // End of word processing, so restart the loop.
+      // End of word processing, so restart reallocateword and restart  the loop.
+      word_size = default_word_size;
+      word = (char *) checked_malloc(word_size);
+      word[0] = '\0';
       continue;
     }
     // If is any of the remaing possible POSIX characters, the simple command
     // is over, so put that back and return to a higher function.
     else if ( next_byte == ';' || next_byte == '|' || next_byte == '&'
-           || next_byte == '\n' )
+           || next_byte == '\n'|| next_byte == ')')
     {
       // If either flag is still set, the command ended improperly
       if ( output_redir || input_redir )
@@ -243,6 +246,8 @@ parse_simple_command ( int (*get_next_byte) (void *),
       give_last_byte(get_next_byte_argument);
       break;
     }
+    else
+      error(1,0,"%d: Unknown character encountered.", line_number);
   }
   // If the command has a first word, everything should be good.  Else, we
   // either saw a blank command or... 
@@ -253,6 +258,65 @@ parse_simple_command ( int (*get_next_byte) (void *),
   return command;
 }
 
+command_t
+parse_subshell_command (int (*get_next_byte) (void *),
+                        void *get_next_byte_argument,
+                        bool subshell_open )
+{
+  // Allocate a command and set but dont set it's type yet;
+  command_t command = checked_malloc(sizeof(struct command));
+
+  // Start the main read loop
+  char next_byte;
+  while ( (next_byte = get_next_byte(get_next_byte_argument)) != EOF )
+  {
+   // First check if it's a comment or whitespace and advance.
+   if ( next_byte == '#' )
+    {
+      // next_byte is now the next newline, this time we need to handle it,
+      // so push it back on the stack and continue
+      next_byte = get_byte_after_comment(get_next_byte, get_next_byte_argument);
+      give_last_byte(get_next_byte_argument);
+      continue;
+    }
+    // If ' ' or '/t' we can just restart the loop and check again.
+    else if ( next_byte == ' ' || next_byte == '\t' )
+      continue;    
+    // If its a word char, put it back and call simple command directly
+    else if ( is_word_char(next_byte) )
+    {
+      give_last_byte(get_next_byte_argument);
+      command = parse_simple_command(get_next_byte, get_next_byte_argument);
+      continue;
+    }
+    // The next byte starts a subshell.  Nested call with subshell_open = true.
+    // Why?  Because believe me, without that parameter handling nested subshells
+    // is a huuuugge pain.
+    else if ( next_byte == '(' )
+    {
+      // call a copy of ourself to handle it instead of just setting the flag here
+      // this provides some memory for the state!
+      command = parse_subshell_command(get_next_byte, get_next_byte_argument, true);
+      continue;
+    }
+    else if ( next_byte == ')' )
+    {
+      if ( subshell_open )
+      {
+        command_t subshell_command = checked_malloc(sizeof(struct command));
+        subshell_command->type = SUBSHELL_COMMAND;
+        subshell_command->u.subshell_command = command;
+        return subshell_command;
+      }
+      else 
+        error(1,0,"%d: Subshell was closed, but never opened. Missing '('?", line_number);
+    }
+  }
+  if ( subshell_open )
+    error(1,0,"%d: Subshell was opened, but never closed.  Missing ')'?", line_number);  
+  return command;
+} 
+
 /* Main Hook Functions ------------------------------------------------------ */
 
 command_stream_t
@@ -262,12 +326,12 @@ make_command_stream (int (*get_next_byte) (void *),
   command_stream_t stream = checked_malloc(sizeof(stream));
   command_t root = checked_malloc(sizeof(struct command));
 
-  root = parse_simple_command(get_next_byte, get_next_byte_argument);
+  root = parse_subshell_command(get_next_byte, get_next_byte_argument, false);
 
   if ( root != NULL )
     stream->root = root;
   else
-    error(1,0,"%d: Failed creation.  No commands read.", line_number);
+    error(1,0,"%d: Failed stream creation.  No commands read.", line_number);
   
   return stream;
 }
@@ -275,7 +339,20 @@ make_command_stream (int (*get_next_byte) (void *),
 command_t
 read_command_stream (command_stream_t s)
 {
-  command_t root = s->root;
+  command_t command = s->root;
+  if ( command == NULL)
+    return NULL;
+  else if ( command->type == SUBSHELL_COMMAND )
+  {
+    while ( command->type == SUBSHELL_COMMAND )
+    {
+      if ( command->u.subshell_command != NULL )
+        command = command->u.subshell_command;
+      else
+        error(1,0,"A subshell went wonky in storage.");
+      s->root = command;
+    }
+  }
   s->root = NULL;
-  return root;
+  return command;
 }

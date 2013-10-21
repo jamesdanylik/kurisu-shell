@@ -25,6 +25,12 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Yay subshells working now! Just need to get three more functions going,
+  then I should be caught up... on parsing at least!  Pretty happy with my
+  parsing functions so far, just wish I could get my command stream reader
+  to be a cleaner looking function.  Ah well.  For now sleep.
+  1021130505
+
 * Got a basic view of commands working, and immediately saw I had a bug.  All
   words were being included in the array, and I completely negelted to consider
   that the skeleton code would have no way to know I was storing redundant 

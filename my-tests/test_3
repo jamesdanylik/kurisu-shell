@@ -1,1 +1,2 @@
+# This entire line is a comment
 cat </etc/passwd > file
