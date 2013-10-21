@@ -18,7 +18,7 @@ struct command_stream
 {
   // The command stream should just be a tree of commands, so all we need is a
   // pointer to the root of the tree
-  command_t *root;
+  command_t root;
 };
 
 int line_number = 1;
@@ -184,16 +184,6 @@ parse_simple_command ( int (*get_next_byte) (void *),
       // Put the last byte back for processing, it might not be a space!
       give_last_byte(get_next_byte_argument);
 
-      // resize the words array if this word will make too many
-      if ( (words_used*sizeof(char *)) >= (words_size-sizeof(char *)) )
-        words = checked_grow_alloc(words, &words_size);
-
-      // store the word in the array and allocate a new one
-      words[words_used++] = word;
-      word_size = default_word_size;
-      word = (char *) checked_malloc(word_size);
-      word[0] = '\0';
-      
       // If output_redir is true, link this word to output and reset the flag.
       if ( output_redir )
       {
@@ -201,7 +191,10 @@ parse_simple_command ( int (*get_next_byte) (void *),
         // set the word we just read to it, else its an error
         if ( command->output == NULL )
         {
-          command->output = words[words_used-1];
+          command->output = word;
+          word_size = default_word_size;
+          word = (char *) checked_malloc(word_size);
+          word[0] = '\0';
           output_redir = false;
         }
         else
@@ -214,11 +207,27 @@ parse_simple_command ( int (*get_next_byte) (void *),
         // set the word we just read to it, else its an error
         if ( command->input == NULL )
         {
-          command->input = words[words_used-1];
+          command->input = word;
+          word_size = default_word_size;
+          word = (char *) checked_malloc(word_size);
+          word[0] = '\0';
           input_redir = false;
         }
         else
           error(1,0,"%d: Input was already redirected for this command!", line_number);
+      }
+      // Else this is just another argument or word
+      else
+      {
+        // resize the words array if this word will make too many
+        if ( (words_used*sizeof(char *)) >= (words_size-sizeof(char *)) )
+          words = checked_grow_alloc(words, &words_size);
+
+        // store the word in the array and allocate a new one
+        words[words_used++] = word;
+        word_size = default_word_size;
+        word = (char *) checked_malloc(word_size);
+        word[0] = '\0';
       }
       // End of word processing, so restart the loop.
       continue;
@@ -250,16 +259,23 @@ command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
-  parse_simple_command(get_next_byte, get_next_byte_argument);
-  return 0;
+  command_stream_t stream = checked_malloc(sizeof(stream));
+  command_t root = checked_malloc(sizeof(struct command));
+
+  root = parse_simple_command(get_next_byte, get_next_byte_argument);
+
+  if ( root != NULL )
+    stream->root = root;
+  else
+    error(1,0,"%d: Failed creation.  No commands read.", line_number);
+  
+  return stream;
 }
 
 command_t
 read_command_stream (command_stream_t s)
 {
-  /* FIXME: Replace this with your implementation too.  */
-  (void)s;
-
-  error (1, 0, "command reading not yet implemented");
-  return 0;
+  command_t root = s->root;
+  s->root = NULL;
+  return root;
 }

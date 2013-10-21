@@ -25,6 +25,13 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Got a basic view of commands working, and immediately saw I had a bug.  All
+  words were being included in the array, and I completely negelted to consider
+  that the skeleton code would have no way to know I was storing redundant 
+  pointers in there.  Eliminated it, and I think the code is actually a bit
+  cleaner now.  
+  1020131940
+
 * Improved simple command to handle redirects, believe its now fully working.
   Tough to tell without a way to check output outside of printfs... getting
   a working version of read_command_stream is a high priority to verify my
