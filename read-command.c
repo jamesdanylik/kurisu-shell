@@ -88,14 +88,16 @@ parse_subshell_command ( int (*get_next_byte) (void *),
 
 command_t
 parse_pipe_command ( int (*get_next_byte) (void *),
-                         void *get_next_byte_argument );
+                     void *get_next_byte_argument,
+                     command_t left_command );
   // Function to parse pipeline commands, defined as one or more commands
   // seperated by '|'.  Specifically, creates commands that are of type 
   // PIPE_COMMAND
 
 command_t
 parse_andor_command ( int (*get_next_byte) (void *),
-                      void *get_next_byte_argument );
+                      void *get_next_byte_argument,
+                      command_t left_command );
   // Function to parse andor commands, defined as one or more pipelines
   // seperated by '&&' or '||'.  This function will produce output of two
   // types, AND_COMMAND and OR_COMMAND; this is okay since they are equal
@@ -103,7 +105,8 @@ parse_andor_command ( int (*get_next_byte) (void *),
 
 command_t
 parse_complete_command ( int (*get_next_byte) (void *),
-                         void * get_next_byte_argument );
+                         void * get_next_byte_argument,
+                         command_t left_command );
  // Function to parse complete commands, and hence our entry point function.
  // which are defined as one or more AND/OR commands seperated by a SEMICOLON
  // or a NEWLINE, and optionally followed by a SEMICOLON.  This returns
@@ -221,6 +224,9 @@ parse_simple_command ( int (*get_next_byte) (void *),
       // Else this is just another argument or word
       else
       {
+        if ( command->input != NULL || command->output != NULL)
+          error(1,0,"%d: Extra words following I/O redirects.", line_number);
+
         // resize the words array if this word will make too many
         if ( (words_used*sizeof(char *)) >= (words_size-sizeof(char *)) )
           words = checked_grow_alloc(words, &words_size);
@@ -313,8 +319,10 @@ parse_subshell_command (int (*get_next_byte) (void *),
 
 command_t
 parse_complete_command ( int (*get_next_byte) (void *),
-                         void *get_next_byte_argument )
+                         void *get_next_byte_argument,
+                         command_t left_command )
 {
+  (void) left_command;
   command_t command = checked_malloc(sizeof(struct command));
 
   // Start the main read loop
@@ -370,7 +378,7 @@ make_command_stream (int (*get_next_byte) (void *),
   command_stream_t stream = checked_malloc(sizeof(stream));
   command_t root = checked_malloc(sizeof(struct command));
 
-  root = parse_complete_command(get_next_byte, get_next_byte_argument);
+  root = parse_complete_command(get_next_byte, get_next_byte_argument, NULL);
 
   if ( root != NULL )
     stream->root = root;

@@ -25,6 +25,12 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Corrected a bug within simple command where extra words where allowed
+  following I/O redirects.  Corrected it and added another error message
+  as per the spec.  May switch to implementing pipes instead of the 
+  full sequences for the time being.
+  1022130237
+
 * Started a version of complete command, which should be the final entry
   point for the parse according to the spec.  I also realized this should
   allow me to get rid of that ugly variable in parse_subshell; since I can
