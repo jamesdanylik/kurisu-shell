@@ -80,8 +80,7 @@ parse_simple_command ( int (*get_next_byte) (void *),
 
 command_t 
 parse_subshell_command ( int (*get_next_byte) (void *),
-                         void *get_next_byte_argument,
-                         bool subshell_open );
+                         void *get_next_byte_argument );
   // Function to parse subshell commands, defined as complete commands in the
   // spec.  Specifically, creates commands that are of type SUBSHELL_COMMAND.
   // Added a function parameter to remember whether or not this is the first
@@ -260,8 +259,7 @@ parse_simple_command ( int (*get_next_byte) (void *),
 
 command_t
 parse_subshell_command (int (*get_next_byte) (void *),
-                        void *get_next_byte_argument,
-                        bool subshell_open )
+                        void *get_next_byte_argument )
 {
   // Allocate a command and set but dont set it's type yet;
   command_t command = checked_malloc(sizeof(struct command));
@@ -296,26 +294,72 @@ parse_subshell_command (int (*get_next_byte) (void *),
     {
       // call a copy of ourself to handle it instead of just setting the flag here
       // this provides some memory for the state!
-      command = parse_subshell_command(get_next_byte, get_next_byte_argument, true);
+      command = parse_subshell_command(get_next_byte, get_next_byte_argument);
+      if ( command->type != SUBSHELL_COMMAND )
+        error(1,0, "Unmatched paranthesis.");
       continue;
     }
     else if ( next_byte == ')' )
     {
-      if ( subshell_open )
-      {
-        command_t subshell_command = checked_malloc(sizeof(struct command));
-        subshell_command->type = SUBSHELL_COMMAND;
-        subshell_command->u.subshell_command = command;
-        return subshell_command;
-      }
-      else 
-        error(1,0,"%d: Subshell was closed, but never opened. Missing '('?", line_number);
+      command_t subshell_command = checked_malloc(sizeof(struct command));
+      subshell_command->type = SUBSHELL_COMMAND;
+      subshell_command->u.subshell_command = command;
+      return subshell_command;
+    }
+  } 
+  error(1,0,"Unmatched paranthesis.");  
+  return 0;
+} 
+
+command_t
+parse_complete_command ( int (*get_next_byte) (void *),
+                         void *get_next_byte_argument )
+{
+  command_t command = checked_malloc(sizeof(struct command));
+
+  // Start the main read loop
+  char next_byte;
+  while ( (next_byte = get_next_byte(get_next_byte_argument)) != EOF )
+  {
+   // First check if it's a comment or whitespace and advance.
+   if ( next_byte == '#' )
+    {
+      // next_byte is now the next newline, this time we need to handle it,
+      // so push it back on the stack and continue
+      next_byte = get_byte_after_comment(get_next_byte, get_next_byte_argument);
+      give_last_byte(get_next_byte_argument);
+      continue;
+    }
+    // If ' ' or '/t' we can just restart the loop and check again.
+    else if ( next_byte == ' ' || next_byte == '\t' )
+      continue;
+    // If its a word char, put it back and call simple command directly
+    else if ( is_word_char(next_byte) )
+    {
+      give_last_byte(get_next_byte_argument);
+      command = parse_simple_command(get_next_byte, get_next_byte_argument);
+      continue;
+    }
+    // The next byte starts a subshell.  Nested call with subshell_open = true.
+    // Why?  Because believe me, without that parameter handling nested subshells
+    // is a huuuugge pain.
+    else if ( next_byte == '(' )
+    {
+      // call a copy of ourself to handle it instead of just setting the flag here
+      // this provides some memory for the state!
+      command = parse_subshell_command(get_next_byte, get_next_byte_argument);
+      if ( command->type != SUBSHELL_COMMAND )
+        error(1,0, "Unmatched paranthesis.");
+      continue;
+    }
+    else if ( next_byte == ')' )
+    {
+      error(1,0,"%d: Subshell was closed, but never opened. Missing '('?", line_number);
     }
   }
-  if ( subshell_open )
-    error(1,0,"%d: Subshell was opened, but never closed.  Missing ')'?", line_number);  
   return command;
-} 
+
+}
 
 /* Main Hook Functions ------------------------------------------------------ */
 
@@ -326,7 +370,7 @@ make_command_stream (int (*get_next_byte) (void *),
   command_stream_t stream = checked_malloc(sizeof(stream));
   command_t root = checked_malloc(sizeof(struct command));
 
-  root = parse_subshell_command(get_next_byte, get_next_byte_argument, false);
+  root = parse_complete_command(get_next_byte, get_next_byte_argument);
 
   if ( root != NULL )
     stream->root = root;

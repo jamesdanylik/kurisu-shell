@@ -25,6 +25,15 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Started a version of complete command, which should be the final entry
+  point for the parse according to the spec.  I also realized this should
+  allow me to get rid of that ugly variable in parse_subshell; since I can
+  already remember each paranthesis with function calls, and the first
+  entry point now is another function, there is no need for any special
+  check: we're always looking for another paranthesis, else this is an
+  error.  Next step, command sequences.
+  1022130055
+
 * Yay subshells working now! Just need to get three more functions going,
   then I should be caught up... on parsing at least!  Pretty happy with my
   parsing functions so far, just wish I could get my command stream reader
