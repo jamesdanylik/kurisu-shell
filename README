@@ -25,6 +25,13 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* After further review, while subshells are built upon at a low level in
+  the spec, they are by definition high level complete commands!  
+  Seperating complete command and subshell then is going to result in code
+  duplication of the worst kind -- I put the boolean variable back in subshell,
+  and will try to get pipe working next instead of sequences.
+  1022132341
+
 * Corrected a bug within simple command where extra words where allowed
   following I/O redirects.  Corrected it and added another error message
   as per the spec.  May switch to implementing pipes instead of the 
