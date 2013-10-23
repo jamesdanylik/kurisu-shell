@@ -25,6 +25,13 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Successfully implemented and/ors!  I spent so much time coming up with
+  a robust manner of nesting functions, the rest of the puzzle is now 
+  falling into place.  Similar to pipelines, I merely check input and fail
+  up if its not what I expect, otherwise I merely construct the wrapper
+  and put a command in it.  Nice and easy!
+  1023130242
+
 * Fixed a big bug in pipelines and subshells where lots of nesting would
   cause problems.  May have loosened error checking, but errors should 
   still be caught when they fall through to the root parse function.  

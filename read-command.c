@@ -330,7 +330,22 @@ parse_subshell_command (int (*get_next_byte) (void *),
     // pipes
     else if ( next_byte == '|' )
     {
-      command = parse_pipe_command(get_next_byte, get_next_byte_argument, command);
+      if ( (next_byte = get_next_byte(get_next_byte_argument)) == '|' )
+      {
+        give_last_byte(get_next_byte_argument);
+        give_last_byte(get_next_byte_argument);
+        command = parse_andor_command(get_next_byte, get_next_byte_argument, command);
+      }
+      else
+      {
+        give_last_byte(get_next_byte_argument);
+        command = parse_pipe_command(get_next_byte, get_next_byte_argument, command);
+      }
+    }
+    else if ( next_byte == '&' )
+    {
+      give_last_byte(get_next_byte_argument);
+      command = parse_andor_command(get_next_byte, get_next_byte_argument, command);
     }
   } 
   if ( subshell_opened )
@@ -355,6 +370,45 @@ parse_pipe_command ( int (*get_next_byte) (void *),
   command->type = PIPE_COMMAND;
   command->u.command[0] = left_command;
   command->u.command[1] = parse_subshell_command(get_next_byte,get_next_byte_argument, false);
+  return command;
+}
+
+command_t
+parse_andor_command ( int (*get_next_byte) (void *),
+                      void *get_next_byte_argument,
+                      command_t left_command )
+{
+  if ( left_command == NULL )
+    error(1,0,"%d: And/Or called with uninitialized first command!", line_number);
+
+  command_t command = checked_malloc(sizeof(struct command));
+  command->u.command[0] = left_command;
+
+  char next_byte;
+  next_byte = get_next_byte(get_next_byte_argument);
+
+  if ( next_byte == '&' )
+  {
+    if ( (next_byte = get_next_byte(get_next_byte_argument)) == '&' )
+      command->type = AND_COMMAND;
+    else
+      error(1,0,"%d: Single apersand encountered in and/or command.", line_number);
+  }
+  else if ( next_byte == '|' )
+  {
+    if ( (next_byte = get_next_byte(get_next_byte_argument)) == '|' )
+      command->type = OR_COMMAND;
+    else
+      error(1,0,"%d: Or parser called when pipe was intended.", line_number);    
+  }
+  else
+    error(1,0,"%d: And/Or parser called in improper context.", line_number);
+
+  command->u.command[1] = parse_subshell_command(get_next_byte, get_next_byte_argument, false);
+
+  if ( command->u.command[0] == NULL || command->u.command[1] == NULL )
+    error(1,0,"%d: Failed to build and/or command; uninitialized subcommand.", line_number);
+
   return command;
 }
 
