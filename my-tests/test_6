@@ -1,1 +1,3 @@
-this | that | that | the < other
+# this shouldn't matter
+( ( (this < that ) | ( other > out ) ) | bigone )
+# and neither should this

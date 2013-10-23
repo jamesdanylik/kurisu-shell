@@ -253,7 +253,7 @@ parse_simple_command ( int (*get_next_byte) (void *),
       break;
     }
     else
-      error(1,0,"%d: Unknown character encountered.", line_number);
+      error(1,0,"%d: Unknown character encountered in simple command.", line_number);
   }
   // If the command has a first word, everything should be good.  Else, we
   // either saw a blank command or... 
@@ -320,7 +320,11 @@ parse_subshell_command (int (*get_next_byte) (void *),
         return subshell_command;
       }
       else
-        error(1,0,"%d: Subshell was closed, but not opened.  Missing '('?", line_number);
+      {
+      //  error(1,0,"%d: Subshell was closed, but not opened.  Missing '('?", line_number);
+        give_last_byte(get_next_byte_argument);
+        return command;
+      }
     }
     // If it's a pipe, it could be a pipe or an or, but for now we'll just handle
     // pipes
@@ -350,7 +354,7 @@ parse_pipe_command ( int (*get_next_byte) (void *),
   command_t command = checked_malloc(sizeof(struct command));
   command->type = PIPE_COMMAND;
   command->u.command[0] = left_command;
-  command->u.command[1] = parse_simple_command(get_next_byte,get_next_byte_argument);
+  command->u.command[1] = parse_subshell_command(get_next_byte,get_next_byte_argument, false);
   return command;
 }
 

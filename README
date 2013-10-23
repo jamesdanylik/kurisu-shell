@@ -25,6 +25,12 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Fixed a big bug in pipelines and subshells where lots of nesting would
+  cause problems.  May have loosened error checking, but errors should 
+  still be caught when they fall through to the root parse function.  
+  Another victory!
+  1023130042
+
 * Pipelines now work properly!  These actually weren't too bad now that my
   complete command function is recombined; I realized all I pretty much had
   to do was call my other functions!  Nice and easy.  Moving on to and/or
