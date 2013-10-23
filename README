@@ -25,6 +25,12 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Pipelines now work properly!  These actually weren't too bad now that my
+  complete command function is recombined; I realized all I pretty much had
+  to do was call my other functions!  Nice and easy.  Moving on to and/or
+  commands next.
+  1023130017
+
 * After further review, while subshells are built upon at a low level in
   the spec, they are by definition high level complete commands!  
   Seperating complete command and subshell then is going to result in code

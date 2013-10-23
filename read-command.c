@@ -307,6 +307,9 @@ parse_subshell_command (int (*get_next_byte) (void *),
         error(1,0, "%d: Subshell was opened, but never closed. Missing ')'?", line_number);
       continue;
     }
+    // If this byte ends the subshell, either we'r done or something tanked if a
+    // subshell never started.  Allocate a subshell command to nest the target 
+    // command within, and return the subshell command.
     else if ( next_byte == ')' )
     {
       if ( subshell_opened )
@@ -319,11 +322,37 @@ parse_subshell_command (int (*get_next_byte) (void *),
       else
         error(1,0,"%d: Subshell was closed, but not opened.  Missing '('?", line_number);
     }
+    // If it's a pipe, it could be a pipe or an or, but for now we'll just handle
+    // pipes
+    else if ( next_byte == '|' )
+    {
+      command = parse_pipe_command(get_next_byte, get_next_byte_argument, command);
+    }
   } 
   if ( subshell_opened )
     error(1,0,"%d: Subshell was opened, but never closed. Missing ')'?", line_number);  
   return command;
 } 
+
+command_t
+parse_pipe_command ( int (*get_next_byte) (void *),
+                     void *get_next_byte_argument,
+                     command_t left_command )
+{
+  // Make sure we have a proper left command to pipe from before building
+  if ( left_command->type != SIMPLE_COMMAND 
+    && left_command->type != SUBSHELL_COMMAND
+    && left_command->type != PIPE_COMMAND )
+    error(1,0,"%d: Improper pipe input, or command build error.", line_number);
+
+  // Allocate a command, set its type equal to PIPE and set it's left command to
+  // be the command passed in as an argument, then just parse the next part?
+  command_t command = checked_malloc(sizeof(struct command));
+  command->type = PIPE_COMMAND;
+  command->u.command[0] = left_command;
+  command->u.command[1] = parse_simple_command(get_next_byte,get_next_byte_argument);
+  return command;
+}
 
 /* Main Hook Functions ------------------------------------------------------ */
 
