@@ -25,6 +25,20 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Ok, not so successfully!  I forgot I couldn't just directly call my 
+  command parsing function because it would, of course, never return 
+  until input ended in the lowest function, resulting in a always
+  rightward tree of commands.  For a moment, despiar, but then last
+  night I just really needed a way to call more specific command handlers
+  in lower functions; if I called simple command directly, things worked
+  but fell apart for late pipelines.  The solution:  pipe lookahead!  I
+  added sections to pipe and and/or allowing them to look ahead in the 
+  input for incoming pipes.  Everything is handled succesfully now
+  (I think) excepting multiple actual commands ie a script.  So the last
+  step of parsing is to get multiple commands reading correctly, which will
+  require changes to subshell and constuction of my last function.
+  1024130048
+
 * Successfully implemented and/ors!  I spent so much time coming up with
   a robust manner of nesting functions, the rest of the puzzle is now 
   falling into place.  Similar to pipelines, I merely check input and fail

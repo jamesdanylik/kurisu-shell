@@ -326,22 +326,28 @@ parse_subshell_command (int (*get_next_byte) (void *),
         return command;
       }
     }
-    // If it's a pipe, it could be a pipe or an or, but for now we'll just handle
-    // pipes
+    // If it's a pipe, it could be a pipe or an or, so check to see which it is and call the
+    // appropriate function as needed.  Put back the bytes grabbed so if its andor so the 
+    // function can determine what to do; else, just put back the unknown one so pipe can
+    // do it's thing
     else if ( next_byte == '|' )
     {
       if ( (next_byte = get_next_byte(get_next_byte_argument)) == '|' )
       {
+        // It was an OR, so but back the bytes and call the parser
         give_last_byte(get_next_byte_argument);
         give_last_byte(get_next_byte_argument);
         command = parse_andor_command(get_next_byte, get_next_byte_argument, command);
       }
       else
       {
+        // It must be a pipe, so only put the most recent byte back and call parser
         give_last_byte(get_next_byte_argument);
         command = parse_pipe_command(get_next_byte, get_next_byte_argument, command);
       }
     }
+    // If it's an apersand, its either an error or an AND, so send it straight to that
+    // function.  Errors will be handled there.
     else if ( next_byte == '&' )
     {
       give_last_byte(get_next_byte_argument);
@@ -369,7 +375,59 @@ parse_pipe_command ( int (*get_next_byte) (void *),
   command_t command = checked_malloc(sizeof(struct command));
   command->type = PIPE_COMMAND;
   command->u.command[0] = left_command;
-  command->u.command[1] = parse_subshell_command(get_next_byte,get_next_byte_argument, false);
+
+  // Start a first read loop to handle whitespace and newlines without leaving pipe
+  char next_byte;
+  while ( (next_byte = get_next_byte(get_next_byte_argument)) == ' '
+        || next_byte == '\t' || next_byte == '\n' )
+  {
+    if ( next_byte == '\n' )
+      line_number++;
+  }
+  give_last_byte(get_next_byte_argument);
+
+  // Parse the next command
+  command->u.command[1] = parse_simple_command(get_next_byte,get_next_byte_argument);
+ 
+  // Lookahead and make sure it's not a pipeline command next before returning this
+  // command!
+  while ( (next_byte = get_next_byte(get_next_byte_argument)) != EOF )
+  {
+    // Bypass whitespace
+    if ( next_byte == ' ' || next_byte == '\t' )
+      continue;
+    // If we hit newlines, bypass and increment the line number
+    else if ( next_byte == '\n' )
+    {
+      line_number++;
+      continue;
+    }
+    // If we see a '|' it could be a pipe or an or again, so check
+    else if ( next_byte == '|' )
+    {
+      // If it's anything but an our, we got ourselves another piepline and should
+      // call it immediately; else it was an or and we should return the byte for 
+      // the next parser.
+      if ( (next_byte = get_next_byte(get_next_byte_argument)) != '|')
+      {
+        give_last_byte(get_next_byte_argument);
+        command = parse_pipe_command(get_next_byte, get_next_byte_argument, command);
+      }
+      else 
+      {
+        give_last_byte(get_next_byte_argument);
+        give_last_byte(get_next_byte_argument);
+        break;
+      }
+    }
+    // Otherwise it was some other character, put it back and hope we can handle it at
+    // a higher level.
+    else
+    {
+      give_last_byte(get_next_byte_argument);
+      break;
+    }
+  }
   return command;
 }
 
@@ -387,6 +445,9 @@ parse_andor_command ( int (*get_next_byte) (void *),
   char next_byte;
   next_byte = get_next_byte(get_next_byte_argument);
 
+  // Look at the firs two byte to set the type of and/or command we're creating,
+  // otherwise we were called improperly and should error out.  Apersands can 
+  // appear in ANDs, so double check it's there as expected and set AND.
   if ( next_byte == '&' )
   {
     if ( (next_byte = get_next_byte(get_next_byte_argument)) == '&' )
@@ -394,6 +455,8 @@ parse_andor_command ( int (*get_next_byte) (void *),
     else
       error(1,0,"%d: Single apersand encountered in and/or command.", line_number);
   }
+  // Otherwise, this should be an OR, but double check to make sure its not a 
+  // pipeline command!
   else if ( next_byte == '|' )
   {
     if ( (next_byte = get_next_byte(get_next_byte_argument)) == '|' )
@@ -404,8 +467,67 @@ parse_andor_command ( int (*get_next_byte) (void *),
   else
     error(1,0,"%d: And/Or parser called in improper context.", line_number);
 
-  command->u.command[1] = parse_subshell_command(get_next_byte, get_next_byte_argument, false);
+  // Start the main read loop
+  while ( (next_byte=get_next_byte(get_next_byte_argument)) != EOF )
+  {
+   // First deal with comments, newlines and whitespaces same as before.
+   if ( next_byte == '#' )
+    {
+      // next_byte is now the next newline, this time we need to handle it,
+      // so push it back on the stack and continue
+      next_byte = get_byte_after_comment(get_next_byte, get_next_byte_argument);
+      give_last_byte(get_next_byte_argument);
+      continue;
+    }
+    // If ' ' or '/t' we can just restart the loop and check again.
+    else if ( next_byte == ' ' || next_byte == '\t' )
+      continue;
+    // If its a word char, put it back and call simple command directly
+    else if ( is_word_char(next_byte) )
+    {
+      give_last_byte(get_next_byte_argument);
+      command_t right_command = parse_simple_command(get_next_byte, get_next_byte_argument);
+      // Lookahead to make sure the next command isn't a pipeline command before returning!
+      // See more notes from lookahead in parse_pipe_command.
+      while ( (next_byte=get_next_byte(get_next_byte_argument)) != EOF )
+      {
+        if ( next_byte == ' ' || next_byte == '\t' )
+          continue;
+        else if ( next_byte == '|' )
+        {
+          next_byte = get_next_byte(get_next_byte_argument);
+          if ( next_byte != '|' )
+          {
+            right_command = parse_pipe_command(get_next_byte, get_next_byte_argument, right_command );
+            break;
+          }
+          else
+          {
+            give_last_byte(get_next_byte_argument);
+            give_last_byte(get_next_byte_argument);
+            break;
+          }
+        }
+        else
+        {
+          give_last_byte(get_next_byte_argument);
+          break;
+        }
+      }
+      // Set the returned command to it's place in the containging AND/OR
+      command->u.command[1] = right_command;
+      break;
+    }
+    else if ( next_byte =='\n' )
+    {
+      line_number++;
+      continue;
+    }
+    else
+      error(1,0,"%d: Normal command followed by something unexpected.", line_number);
+  }
 
+  // Check we at least made two commands before returning, otherwise we definitnely messed up
   if ( command->u.command[0] == NULL || command->u.command[1] == NULL )
     error(1,0,"%d: Failed to build and/or command; uninitialized subcommand.", line_number);
 
