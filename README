@@ -25,6 +25,14 @@ Usage & Examples
 Project Log & Notebook
 ======================
 
+* Almost done! Sequences now work.  Or at least, I'm pretty sure they work,
+  since no errors are given in reading and basic ones work fine.  But my
+  command reading function is zonked for multiple commands and dies when
+  things get too complicated, so its tough to tell if things are really
+  working.  Next order, improve that function, perhaps by adding a recursive
+  helper.
+  1024130215
+
 * Ok, not so successfully!  I forgot I couldn't just directly call my 
   command parsing function because it would, of course, never return 
   until input ended in the lowest function, resulting in a always

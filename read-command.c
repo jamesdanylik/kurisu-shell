@@ -105,7 +105,7 @@ parse_andor_command ( int (*get_next_byte) (void *),
   // precedence as defined in the spec.
 
 command_t
-parse_complete_command ( int (*get_next_byte) (void *),
+parse_sequence_command ( int (*get_next_byte) (void *),
                          void * get_next_byte_argument,
                          command_t left_command );
  // Function to parse complete commands, and hence our entry point function.
@@ -353,6 +353,52 @@ parse_subshell_command (int (*get_next_byte) (void *),
       give_last_byte(get_next_byte_argument);
       command = parse_andor_command(get_next_byte, get_next_byte_argument, command);
     }
+    // If its a newline, eat the rest of the newlines and whitespace and call the
+    // parser
+    else if ( next_byte == '\n' )
+    {
+      line_number++;
+      while ( (next_byte = get_next_byte(get_next_byte_argument)) != EOF )
+      {
+        if ( next_byte == '#' )
+        {
+          // next_byte is now the next newline, this time we need to handle it,
+          // so push it back on the stack and continue
+          next_byte = get_byte_after_comment(get_next_byte, get_next_byte_argument);
+          give_last_byte(get_next_byte_argument);
+          continue;
+        }
+        // If ' ' or '/t' we can just restart the loop and check again.
+        else if ( next_byte == ' ' || next_byte == '\t' )
+          continue;
+        else if ( next_byte == '\n' )
+        {
+          line_number++;
+          continue;
+        }
+        else
+        {
+          give_last_byte(get_next_byte_argument);
+          break;
+        }
+      }
+      if ( is_word_char(next_byte) )
+      {
+        if ( command == NULL )
+          command = parse_simple_command(get_next_byte, get_next_byte_argument);
+        else
+          command = parse_sequence_command(get_next_byte, get_next_byte_argument, command);
+      }
+      else
+        //error(1,0,"%d: Syntax error after a command closed with newline.", line_number);
+        return command;
+    }
+    else if ( next_byte == ';' )
+    {
+      if ( command == NULL )
+        error(1,0,"%d: Bland command encountered.", line_number);
+      command = parse_sequence_command(get_next_byte, get_next_byte_argument, command);
+    }
   } 
   if ( subshell_opened )
     error(1,0,"%d: Subshell was opened, but never closed. Missing ')'?", line_number);  
@@ -534,6 +580,65 @@ parse_andor_command ( int (*get_next_byte) (void *),
   return command;
 }
 
+command_t
+parse_sequence_command( int (*get_next_byte) (void*),
+                        void *get_next_byte_argument,
+                        command_t left_command )
+{
+  // Allocate a sequence command to hold the two subcommands and set the first
+  // to left_command.
+  command_t command = checked_malloc(sizeof(struct command));
+  command->type = SEQUENCE_COMMAND;
+  command->u.command[0] = left_command;
+
+  // Read the command
+  command_t right_command = parse_simple_command(get_next_byte, get_next_byte_argument);
+
+  // Start read loops for lookaheads; Lookahead for pipes.  See documentation
+  // in parse_pipe.
+  // Next we need a lookahead for AND/ORs.  Similar to subshell, taken from there
+  char next_byte;
+  while ( (next_byte = get_next_byte(get_next_byte_argument)) != EOF )
+  {
+    if ( next_byte == ' ' || next_byte == '\t' )
+      continue;
+    else if ( next_byte == '|' )
+    {
+      if ( (next_byte = get_next_byte(get_next_byte_argument)) == '|' )
+      {
+        // It was an OR, so but back the bytes and call the parser
+        give_last_byte(get_next_byte_argument);
+        give_last_byte(get_next_byte_argument);
+        right_command = parse_andor_command(get_next_byte, get_next_byte_argument, command);
+      }
+      else
+      {
+        // It must be a pipe, so only put the most recent byte back and call parser
+        give_last_byte(get_next_byte_argument);
+        right_command = parse_pipe_command(get_next_byte, get_next_byte_argument, command);
+      }
+    }
+    // If it's an apersand, its either an error or an AND, so send it straight to that
+    // function.  Errors will be handled there.
+    else if ( next_byte == '&' )
+    {
+      give_last_byte(get_next_byte_argument);
+      right_command = parse_andor_command(get_next_byte, get_next_byte_argument, command);
+    }
+    else if ( next_byte == '\n' )
+    {
+      command->u.command[1] = right_command;
+      break;
+    }
+    else
+    {
+      give_last_byte(get_next_byte_argument);
+      break;
+    }
+  }
+  return command;
+}
+
 /* Main Hook Functions ------------------------------------------------------ */
 
 command_stream_t
@@ -557,9 +662,10 @@ command_t
 read_command_stream (command_stream_t s)
 {
   command_t command = s->root;
+  command_t old_command;
   if ( command == NULL)
     return NULL;
-  else if ( command->type == SUBSHELL_COMMAND )
+  while ( command->type == SUBSHELL_COMMAND || command->type == SEQUENCE_COMMAND )
   {
     while ( command->type == SUBSHELL_COMMAND )
     {
@@ -569,7 +675,27 @@ read_command_stream (command_stream_t s)
         error(1,0,"A subshell went wonky in storage.");
       s->root = command;
     }
+    while ( command->type == SEQUENCE_COMMAND )
+    {
+      if ( command->u.command[0] != NULL)
+      {
+        old_command = command;
+        command = command->u.command[0];
+        old_command->u.command[0] = NULL;
+      }
+      else if ( command->u.command[1] != NULL )
+      {
+        old_command = command;
+        command = command->u.command[1];
+        old_command->u.command[0] = NULL;
+        s->root = command;
+        if ( command->type != SUBSHELL_COMMAND &&
+             command->type != SEQUENCE_COMMAND )
+          s->root = NULL;
+      }
+      else
+        return NULL;
+    }
   }
-  s->root = NULL;
   return command;
 }
